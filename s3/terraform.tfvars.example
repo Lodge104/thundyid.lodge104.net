@@ -1,0 +1,15 @@
+# AWS Region - us-east-1 is typically the cheapest and required for CloudFront certificates
+aws_region = "us-east-1"
+
+# Environment
+environment = "prod"
+
+# Domain configuration
+domain_name      = "thundyid.lodge104.net"
+media_subdomain  = "media.thundyid.lodge104.net"
+
+# S3 bucket name - must be globally unique
+bucket_name = "thundyid-lodge104-media"
+
+# IAM user for media access
+iam_username = "media-access-user"
