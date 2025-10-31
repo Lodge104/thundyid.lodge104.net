@@ -47,3 +47,9 @@ variable "publicly_accessible" {
   type        = bool
   default     = false
 }
+
+variable "kms_key_id" {
+  description = "KMS key ID for encryption at rest (uses AWS managed key if not specified)"
+  type        = string
+  default     = null
+}

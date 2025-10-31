@@ -55,3 +55,12 @@ output "security_group_id" {
   description = "Security group ID for the Aurora cluster"
   value       = aws_security_group.authentik_aurora_sg.id
 }
+
+output "encryption_info" {
+  description = "Encryption configuration for the Aurora cluster"
+  value = {
+    storage_encrypted = aws_rds_cluster.authentik_cluster.storage_encrypted
+    kms_key_id        = aws_rds_cluster.authentik_cluster.kms_key_id
+    encryption_type   = var.kms_key_id != null ? "Customer Managed KMS Key" : "AWS Managed Key"
+  }
+}

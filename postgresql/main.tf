@@ -123,7 +123,7 @@ resource "aws_rds_cluster_parameter_group" "authentik_cluster_pg" {
 resource "aws_rds_cluster" "authentik_cluster" {
   cluster_identifier = "authentik-aurora-cluster"
   engine             = "aurora-postgresql"
-  engine_version     = "15.4"
+  engine_version     = "15.13"
   database_name      = "authentik"
   master_username    = var.db_username
   master_password    = random_password.authentik_db_password.result
@@ -144,11 +144,12 @@ resource "aws_rds_cluster" "authentik_cluster" {
   vpc_security_group_ids          = [aws_security_group.authentik_aurora_sg.id]
   db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.authentik_cluster_pg.name
 
-  # Cost optimization - disable expensive features
-  storage_encrypted     = false # Disable encryption to reduce costs
+  # Security settings
+  storage_encrypted     = true           # Enable encryption at rest for security
+  kms_key_id            = var.kms_key_id # Use custom KMS key or AWS managed key
   copy_tags_to_snapshot = true
-  deletion_protection   = false # Allow deletion to avoid accidental costs
-  skip_final_snapshot   = true  # Skip final snapshot for cost savings
+  deletion_protection   = true # Allow deletion to avoid accidental costs
+  skip_final_snapshot   = true # Skip final snapshot for cost savings
 
   # Performance Insights disabled to save costs
   enabled_cloudwatch_logs_exports = []
