@@ -59,7 +59,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "📝 Important Information:"
     echo "========================"
     echo "• Database password is stored in AWS Systems Manager Parameter Store"
-    echo "• Retrieve password with: aws ssm get-parameter --name '/wiki/database/password' --with-decryption --query 'Parameter.Value' --output text"
+    echo "• Retrieve password with: aws ssm get-parameter --name '/authentik/database/password' --with-decryption --query 'Parameter.Value' --output text"
     echo "• This configuration is optimized for cost with 0.5-1.0 ACU scaling"
     echo "• Estimated monthly cost: $6-25 depending on usage"
     echo ""

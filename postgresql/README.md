@@ -1,6 +1,6 @@
 # Aurora Serverless v2 PostgreSQL Database - Cost Optimized
 
-This Terraform configuration creates an AWS Aurora Serverless v2 PostgreSQL database named "wiki" with maximum cost optimization.
+This Terraform configuration creates an AWS Aurora Serverless v2 PostgreSQL database named "authentik" with maximum cost optimization.
 
 ## Cost Optimization Features
 
@@ -32,26 +32,31 @@ This Terraform configuration creates an AWS Aurora Serverless v2 PostgreSQL data
 ## Deployment Instructions
 
 1. **Clone and navigate to the postgresql directory**:
+
    ```bash
    cd postgresql
    ```
 
 2. **Copy the example variables file**:
+
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
 
 3. **Edit terraform.tfvars** (optional - defaults are already cost-optimized):
+
    ```bash
    nano terraform.tfvars
    ```
 
 4. **Initialize Terraform**:
+
    ```bash
    terraform init
    ```
 
 5. **Plan the deployment**:
+
    ```bash
    terraform plan
    ```
@@ -64,26 +69,27 @@ This Terraform configuration creates an AWS Aurora Serverless v2 PostgreSQL data
 ## Accessing the Database
 
 After deployment, you'll get:
+
 - **Endpoint**: Cluster endpoint URL
 - **Port**: 5432 (PostgreSQL default)
-- **Database**: wiki
+- **Database**: authentik
 - **Username**: postgres (default)
 - **Password**: Stored in AWS Systems Manager Parameter Store
 
 ### Retrieving the Password
 
 ```bash
-aws ssm get-parameter --name "/wiki/database/password" --with-decryption --query 'Parameter.Value' --output text
+aws ssm get-parameter --name "/authentik/database/password" --with-decryption --query 'Parameter.Value' --output text
 ```
 
 ### Connecting to the Database
 
 ```bash
 # Using psql
-psql -h <cluster-endpoint> -U postgres -d wiki
+psql -h <cluster-endpoint> -U postgres -d authentik
 
 # Connection string format
-postgresql://postgres:<password>@<cluster-endpoint>:5432/wiki
+postgresql://postgres:<password>@<cluster-endpoint>:5432/authentik
 ```
 
 ## Security Considerations
@@ -110,7 +116,7 @@ Use the cluster endpoint directly in your Lightsail container applications:
 # Environment variables for your Lightsail container
 DB_HOST=<cluster-endpoint>
 DB_PORT=5432
-DB_NAME=wiki
+DB_NAME=authentik
 DB_USER=postgres
 DB_PASSWORD=<retrieved-from-ssm>
 ```

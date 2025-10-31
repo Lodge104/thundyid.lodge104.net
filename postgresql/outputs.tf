@@ -1,37 +1,37 @@
 output "cluster_endpoint" {
   description = "Aurora cluster endpoint"
-  value       = aws_rds_cluster.wiki_cluster.endpoint
+  value       = aws_rds_cluster.authentik_cluster.endpoint
 }
 
 output "cluster_reader_endpoint" {
   description = "Aurora cluster reader endpoint"
-  value       = aws_rds_cluster.wiki_cluster.reader_endpoint
+  value       = aws_rds_cluster.authentik_cluster.reader_endpoint
 }
 
 output "cluster_port" {
   description = "Aurora cluster port"
-  value       = aws_rds_cluster.wiki_cluster.port
+  value       = aws_rds_cluster.authentik_cluster.port
 }
 
 output "database_name" {
   description = "Database name"
-  value       = aws_rds_cluster.wiki_cluster.database_name
+  value       = aws_rds_cluster.authentik_cluster.database_name
 }
 
 output "master_username" {
   description = "Database master username"
-  value       = aws_rds_cluster.wiki_cluster.master_username
+  value       = aws_rds_cluster.authentik_cluster.master_username
   sensitive   = false
 }
 
 output "password_parameter_name" {
   description = "AWS Systems Manager parameter name containing the database password"
-  value       = aws_ssm_parameter.wiki_db_password.name
+  value       = aws_ssm_parameter.authentik_db_password.name
 }
 
 output "cluster_identifier" {
   description = "Aurora cluster identifier"
-  value       = aws_rds_cluster.wiki_cluster.cluster_identifier
+  value       = aws_rds_cluster.authentik_cluster.cluster_identifier
 }
 
 output "estimated_monthly_cost" {
@@ -45,13 +45,13 @@ output "lightsail_connection_info" {
     enabled              = var.allow_lightsail_access
     publicly_accessible  = var.publicly_accessible
     vpc_peering_required = true
-    connection_string    = "postgresql://${aws_rds_cluster.wiki_cluster.master_username}:<password>@${aws_rds_cluster.wiki_cluster.endpoint}:${aws_rds_cluster.wiki_cluster.port}/${aws_rds_cluster.wiki_cluster.database_name}"
-    password_retrieval   = "aws ssm get-parameter --name '${aws_ssm_parameter.wiki_db_password.name}' --with-decryption --query 'Parameter.Value' --output text"
+    connection_string    = "postgresql://${aws_rds_cluster.authentik_cluster.master_username}:<password>@${aws_rds_cluster.authentik_cluster.endpoint}:${aws_rds_cluster.authentik_cluster.port}/${aws_rds_cluster.authentik_cluster.database_name}"
+    password_retrieval   = "aws ssm get-parameter --name '${aws_ssm_parameter.authentik_db_password.name}' --with-decryption --query 'Parameter.Value' --output text"
     setup_note           = "Ensure VPC Peering is enabled for Lightsail in your AWS region"
   }
 }
 
 output "security_group_id" {
   description = "Security group ID for the Aurora cluster"
-  value       = aws_security_group.wiki_aurora_sg.id
+  value       = aws_security_group.authentik_aurora_sg.id
 }

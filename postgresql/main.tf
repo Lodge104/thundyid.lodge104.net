@@ -32,7 +32,7 @@ provider "aws" {
 }
 
 # Generate a random password for the database
-resource "random_password" "wiki_db_password" {
+resource "random_password" "authentik_db_password" {
   length  = 16
   special = true
 }
@@ -50,20 +50,20 @@ data "aws_subnets" "default" {
 }
 
 # DB subnet group using default VPC subnets (accessible via VPC Peering)
-resource "aws_db_subnet_group" "wiki_subnet_group" {
-  name       = "wiki-subnet-group"
+resource "aws_db_subnet_group" "authentik_subnet_group" {
+  name       = "authentik-subnet-group"
   subnet_ids = data.aws_subnets.default.ids
 
   tags = {
-    Name        = "Wiki DB subnet group"
+    Name        = "authentik DB subnet group"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
 
 # Security group for Aurora cluster
-resource "aws_security_group" "wiki_aurora_sg" {
-  name_prefix = "wiki-aurora-sg"
+resource "aws_security_group" "authentik_aurora_sg" {
+  name_prefix = "authentik-aurora-sg"
   vpc_id      = data.aws_vpc.default.id
 
   # Allow access from VPC
@@ -95,16 +95,16 @@ resource "aws_security_group" "wiki_aurora_sg" {
   }
 
   tags = {
-    Name        = "Wiki Aurora Security Group"
+    Name        = "authentik Aurora Security Group"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
 
 # Aurora cluster parameter group for PostgreSQL
-resource "aws_rds_cluster_parameter_group" "wiki_cluster_pg" {
+resource "aws_rds_cluster_parameter_group" "authentik_cluster_pg" {
   family = "aurora-postgresql15"
-  name   = "wiki-cluster-pg"
+  name   = "authentik-cluster-pg"
 
   # Cost optimization parameters
   parameter {
@@ -113,20 +113,20 @@ resource "aws_rds_cluster_parameter_group" "wiki_cluster_pg" {
   }
 
   tags = {
-    Name        = "Wiki Cluster Parameter Group"
+    Name        = "authentik Cluster Parameter Group"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
 
 # Aurora Serverless v2 cluster
-resource "aws_rds_cluster" "wiki_cluster" {
-  cluster_identifier = "wiki-aurora-cluster"
+resource "aws_rds_cluster" "authentik_cluster" {
+  cluster_identifier = "authentik-aurora-cluster"
   engine             = "aurora-postgresql"
   engine_version     = "15.4"
-  database_name      = "wiki"
+  database_name      = "authentik"
   master_username    = var.db_username
-  master_password    = random_password.wiki_db_password.result
+  master_password    = random_password.authentik_db_password.result
 
   # Cost optimization settings
   backup_retention_period      = 1 # Minimum backup retention (1 day)
@@ -140,9 +140,9 @@ resource "aws_rds_cluster" "wiki_cluster" {
   }
 
   # Network and security
-  db_subnet_group_name            = aws_db_subnet_group.wiki_subnet_group.name
-  vpc_security_group_ids          = [aws_security_group.wiki_aurora_sg.id]
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.wiki_cluster_pg.name
+  db_subnet_group_name            = aws_db_subnet_group.authentik_subnet_group.name
+  vpc_security_group_ids          = [aws_security_group.authentik_aurora_sg.id]
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.authentik_cluster_pg.name
 
   # Cost optimization - disable expensive features
   storage_encrypted     = false # Disable encryption to reduce costs
@@ -154,19 +154,19 @@ resource "aws_rds_cluster" "wiki_cluster" {
   enabled_cloudwatch_logs_exports = []
 
   tags = {
-    Name        = "Wiki Aurora Cluster"
+    Name        = "authentik Aurora Cluster"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
 
 # Aurora Serverless v2 instance
-resource "aws_rds_cluster_instance" "wiki_instance" {
-  identifier         = "wiki-aurora-instance"
-  cluster_identifier = aws_rds_cluster.wiki_cluster.id
+resource "aws_rds_cluster_instance" "authentik_instance" {
+  identifier         = "authentik-aurora-instance"
+  cluster_identifier = aws_rds_cluster.authentik_cluster.id
   instance_class     = "db.serverless"
-  engine             = aws_rds_cluster.wiki_cluster.engine
-  engine_version     = aws_rds_cluster.wiki_cluster.engine_version
+  engine             = aws_rds_cluster.authentik_cluster.engine
+  engine_version     = aws_rds_cluster.authentik_cluster.engine_version
 
   # Make publicly accessible for Lightsail container services
   publicly_accessible = var.publicly_accessible
@@ -178,21 +178,21 @@ resource "aws_rds_cluster_instance" "wiki_instance" {
   performance_insights_enabled = false
 
   tags = {
-    Name        = "Wiki Aurora Instance"
+    Name        = "authentik Aurora Instance"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
 
 # Store password in AWS Systems Manager Parameter Store (secure and free)
-resource "aws_ssm_parameter" "wiki_db_password" {
-  name  = "/wiki/database/password"
+resource "aws_ssm_parameter" "authentik_db_password" {
+  name  = "/authentik/database/password"
   type  = "SecureString"
-  value = random_password.wiki_db_password.result
+  value = random_password.authentik_db_password.result
 
   tags = {
-    Name        = "Wiki Database Password"
+    Name        = "authentik Database Password"
     Environment = var.environment
-    Project     = "wiki"
+    Project     = "authentik"
   }
 }
