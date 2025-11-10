@@ -20,10 +20,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.1"
-    }
   }
 }
 
@@ -31,10 +27,20 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Generate a random password for the database
-resource "random_password" "authentik_db_password" {
-  length  = 16
-  special = true
+# Generate a random password for the database using openssl
+resource "null_resource" "authentik_db_password" {
+  triggers = {
+    rotate = timestamp()
+  }
+  
+  provisioner "local-exec" {
+    command = "openssl rand -base64 36 | tr -d '\n' | tr -d '/\"@ ' > ${path.module}/.db_password"
+  }
+}
+
+data "local_file" "authentik_db_password" {
+  filename = "${path.module}/.db_password"
+  depends_on = [null_resource.authentik_db_password]
 }
 
 # Get default VPC and subnets to minimize costs
@@ -126,7 +132,7 @@ resource "aws_rds_cluster" "authentik_cluster" {
   engine_version     = "15.13"
   database_name      = "authentik"
   master_username    = var.db_username
-  master_password    = random_password.authentik_db_password.result
+  master_password    = data.local_file.authentik_db_password.content
 
   # Cost optimization settings
   backup_retention_period      = 1 # Minimum backup retention (1 day)
@@ -189,7 +195,7 @@ resource "aws_rds_cluster_instance" "authentik_instance" {
 resource "aws_ssm_parameter" "authentik_db_password" {
   name  = "/authentik/database/password"
   type  = "SecureString"
-  value = random_password.authentik_db_password.result
+  value = data.local_file.authentik_db_password.content
 
   tags = {
     Name        = "authentik Database Password"
