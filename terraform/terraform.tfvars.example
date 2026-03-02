@@ -1,0 +1,42 @@
+# =============================================================================
+# Example terraform.tfvars — copy to terraform.tfvars and edit
+#
+# IMPORTANT: terraform.tfvars is gitignored — never commit secrets.
+# =============================================================================
+
+aws_region         = "us-east-1"
+environment        = "dev"
+project_name       = "thundyid"
+domain_name        = "thundyid.lodge104.net"
+route53_zone_name  = "lodge104.net"
+
+# VPC
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# EKS
+kubernetes_version = "1.32"
+
+# Aurora
+aurora_engine_version  = "16.6"
+aurora_min_capacity    = 0.5
+aurora_max_capacity    = 4
+aurora_database_name   = "zitadel"
+aurora_master_username = "zitadeladmin"
+
+# Valkey
+valkey_node_type      = "cache.t4g.micro"
+valkey_engine_version = "7.2"
+
+# Zitadel
+zitadel_chart_version    = "9.2.0"
+zitadel_namespace        = "zitadel"
+zitadel_admin_username   = "admin"
+zitadel_admin_email      = "admin@lodge104.net"
+zitadel_admin_first_name = "Zitadel"
+zitadel_admin_last_name  = "Admin"
+zitadel_admin_password   = "ThundyId-Ch4ng3Me!"
+
+tags = {
+  Owner = "Lodge104"
+}

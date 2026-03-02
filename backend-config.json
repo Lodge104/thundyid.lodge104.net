@@ -1,0 +1,32 @@
+{
+  "backend_config": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "bucket": "string",
+        "dynamodb_table": "string",
+        "encrypt": "bool",
+        "key": "string",
+        "region": "string"
+      }
+    ],
+    "value": {
+      "bucket": "thundyid-terraform-state-423971488961",
+      "dynamodb_table": "thundyid-terraform-locks",
+      "encrypt": true,
+      "key": "terraform.tfstate",
+      "region": "us-east-1"
+    }
+  },
+  "dynamodb_table_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "thundyid-terraform-locks"
+  },
+  "s3_bucket_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "thundyid-terraform-state-423971488961"
+  }
+}
