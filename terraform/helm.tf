@@ -1,20 +1,30 @@
-# -----------------------------------------------------------------------------
-# Helm Releases — external-dns, AWS LB Controller, Zitadel
-# -----------------------------------------------------------------------------
+# Helm Releases using Terraform Helm Provider
 
-# -----------------------------------------------------------------------------
-# AWS Load Balancer Controller
-# EKS Auto Mode installs this automatically, but we need to configure the
-# service account with the IRSA role.  If Auto Mode's built-in controller
-# is sufficient, this can be removed.
-# -----------------------------------------------------------------------------
+# Configure kubeconfig for Helm/Kubernetes access
+# NOTE: This provisioner runs during apply, so the Helm provider initialization 
+# may require pre-configured kubeconfig. You can pre-configure it by running:
+#   aws eks update-kubeconfig --region <region> --name <cluster-name>
+resource "null_resource" "helm_kubeconfig" {
+  triggers = {
+    cluster_name = module.eks.cluster_name
+  }
 
+  provisioner "local-exec" {
+    command = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
+  }
+
+  depends_on = [module.eks]
+}
+
+# AWS Load Balancer Controller via Helm
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
   version    = "1.12.0"
+  wait       = true
+  timeout    = 300
 
   values = [
     yamlencode({
@@ -32,19 +42,18 @@ resource "helm_release" "aws_load_balancer_controller" {
     })
   ]
 
-  depends_on = [module.eks]
+  depends_on = [module.eks, null_resource.helm_kubeconfig]
 }
 
-# -----------------------------------------------------------------------------
-# external-dns — manages Route53 records from Ingress annotations
-# -----------------------------------------------------------------------------
-
+# external-dns via Helm
 resource "helm_release" "external_dns" {
   name       = "external-dns"
   repository = "https://kubernetes-sigs.github.io/external-dns"
   chart      = "external-dns"
   namespace  = "kube-system"
   version    = "1.15.2"
+  wait       = true
+  timeout    = 300
 
   values = [
     yamlencode({
@@ -67,30 +76,28 @@ resource "helm_release" "external_dns" {
     })
   ]
 
-  depends_on = [module.eks]
+  depends_on = [helm_release.aws_load_balancer_controller]
 }
 
-# -----------------------------------------------------------------------------
-# Zitadel — Identity management platform
-# -----------------------------------------------------------------------------
-
+# Zitadel via Helm
 resource "helm_release" "zitadel" {
   name       = "zitadel"
   repository = "https://charts.zitadel.com"
   chart      = "zitadel"
-  namespace  = kubernetes_namespace.zitadel.metadata[0].name
-  version    = var.zitadel_chart_version
-
-  timeout = 900
+  namespace  = kubernetes_namespace_v1.zitadel.metadata[0].name
+  version    = "9.2.0"
+  wait       = true
+  timeout    = 900
 
   values = [
     yamlencode({
       replicaCount = 2
 
       zitadel = {
-        masterkeySecretName = kubernetes_secret.zitadel_masterkey.metadata[0].name
-        configSecretName    = kubernetes_secret.zitadel_db_credentials.metadata[0].name
+        # Reference our Terraform-managed masterkey secret (key: "masterkey")
+        masterkeySecretName = kubernetes_secret_v1.zitadel_masterkey.metadata[0].name
 
+        # Non-sensitive config → rendered into the zitadel-config-yaml ConfigMap
         configmapConfig = {
           ExternalDomain = var.domain_name
           ExternalPort   = 443
@@ -101,7 +108,7 @@ resource "helm_release" "zitadel" {
           }
 
           Database = {
-            Postgres = {
+            postgres = {
               Host     = module.aurora.cluster_endpoint
               Port     = 5432
               Database = var.aurora_database_name
@@ -126,7 +133,7 @@ resource "helm_release" "zitadel" {
                 Enabled   = true
                 Addr      = "${module.elasticache.replication_group_primary_endpoint_address}:6379"
                 EnableTLS = true
-                DBOffset  = 10
+                DbOffset  = 10
               }
             }
             Instance = {
@@ -144,12 +151,53 @@ resource "helm_release" "zitadel" {
           FirstInstance = {
             Org = {
               Human = {
-                UserName               = var.zitadel_admin_username
-                FirstName              = var.zitadel_admin_first_name
-                LastName               = var.zitadel_admin_last_name
-                Email                  = var.zitadel_admin_email
-                Password               = var.zitadel_admin_password
+                UserName  = var.zitadel_admin_username
+                FirstName = var.zitadel_admin_first_name
+                LastName  = var.zitadel_admin_last_name
+                Email = {
+                  Address  = var.zitadel_admin_email
+                  Verified = true
+                }
                 PasswordChangeRequired = true
+              }
+            }
+          }
+
+          Machine = {
+            Identification = {
+              Hostname = {
+                Enabled = true
+              }
+              Webhook = {
+                Enabled = false
+              }
+            }
+          }
+        }
+
+        # Sensitive config → rendered into the zitadel-secrets-yaml Secret and mounted alongside the ConfigMap
+        secretConfig = {
+          FirstInstance = {
+            Org = {
+              Human = {
+                Password = var.zitadel_admin_password
+              }
+            }
+          }
+          Database = {
+            postgres = {
+              User = {
+                Password = random_password.zitadel_db_app_password.result
+              }
+              Admin = {
+                Password = local.aurora_master_password
+              }
+            }
+          }
+          Caches = {
+            Connectors = {
+              Redis = {
+                Password = random_password.valkey_auth_token.result
               }
             }
           }
@@ -187,42 +235,29 @@ resource "helm_release" "zitadel" {
         ]
       }
 
-      login = {
-        ingress = {
-          enabled   = true
-          className = "alb"
-          annotations = {
-            "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
-            "alb.ingress.kubernetes.io/target-type"              = "ip"
-            "alb.ingress.kubernetes.io/certificate-arn"          = module.acm.acm_certificate_arn
-            "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTPS\":443}]"
-            "alb.ingress.kubernetes.io/backend-protocol-version" = "HTTP2"
-            "alb.ingress.kubernetes.io/healthcheck-path"         = "/debug/healthz"
-            "alb.ingress.kubernetes.io/group.name"               = local.name
-            "external-dns.alpha.kubernetes.io/hostname"          = var.domain_name
-          }
-          hosts = [
-            {
-              host = var.domain_name
-              paths = [
-                {
-                  path     = "/ui/v2/login"
-                  pathType = "Prefix"
-                }
-              ]
-            }
-          ]
-          tls = [
-            {
-              hosts = [var.domain_name]
-            }
-          ]
-        }
-      }
-
       podDisruptionBudget = {
         enabled      = true
         minAvailable = 1
+      }
+
+      # Increase job deadlines (default 300s is not enough for fresh setup on Aurora Serverless v2)
+      initJob = {
+        activeDeadlineSeconds = 120
+      }
+      setupJob = {
+        activeDeadlineSeconds = 300
+        # Remove --init-projections=true (default): projection workers stuck in "started"
+        # state from a previous killed run cause checkExec() to loop indefinitely.
+        # Projections initialize normally when zitadel start runs.
+        additionalArgs = []
+        # bitnami/kubectl only publishes "latest" tag; the chart default computes "1.32"
+        # from the K8s version which does not exist in the registry.
+        machinekeyWriter = {
+          image = {
+            repository = "bitnami/kubectl"
+            tag        = "latest"
+          }
+        }
       }
     })
   ]
@@ -230,10 +265,11 @@ resource "helm_release" "zitadel" {
   depends_on = [
     helm_release.aws_load_balancer_controller,
     helm_release.external_dns,
-    kubernetes_secret.zitadel_db_credentials,
-    kubernetes_secret.zitadel_cache_credentials,
-    kubernetes_secret.zitadel_masterkey,
+    kubernetes_secret_v1.zitadel_db_credentials,
+    kubernetes_secret_v1.zitadel_cache_credentials,
+    kubernetes_secret_v1.zitadel_masterkey,
     module.aurora,
     module.elasticache,
   ]
 }
+

@@ -19,8 +19,9 @@ module "secrets_manager_masterkey" {
   source  = "terraform-aws-modules/secrets-manager/aws"
   version = "~> 1.0"
 
-  name        = "${local.name}/zitadel-masterkey"
-  description = "Zitadel encryption masterkey"
+  name                    = "${local.name}/zitadel-masterkey"
+  description             = "Zitadel encryption masterkey"
+  recovery_window_in_days = 0
 
   secret_string = random_password.zitadel_masterkey.result
 
@@ -32,8 +33,9 @@ module "secrets_manager_valkey" {
   source  = "terraform-aws-modules/secrets-manager/aws"
   version = "~> 1.0"
 
-  name        = "${local.name}/valkey-auth-token"
-  description = "Valkey auth token for Zitadel caching"
+  name                    = "${local.name}/valkey-auth-token"
+  description             = "Valkey auth token for Zitadel caching"
+  recovery_window_in_days = 0
 
   secret_string = random_password.valkey_auth_token.result
 
@@ -44,7 +46,7 @@ module "secrets_manager_valkey" {
 # Kubernetes namespace
 # -----------------------------------------------------------------------------
 
-resource "kubernetes_namespace" "zitadel" {
+resource "kubernetes_namespace_v1" "zitadel" {
   metadata {
     name = var.zitadel_namespace
     labels = {
@@ -60,10 +62,10 @@ resource "kubernetes_namespace" "zitadel" {
 # -----------------------------------------------------------------------------
 
 # Zitadel masterkey secret
-resource "kubernetes_secret" "zitadel_masterkey" {
+resource "kubernetes_secret_v1" "zitadel_masterkey" {
   metadata {
     name      = "zitadel-masterkey"
-    namespace = kubernetes_namespace.zitadel.metadata[0].name
+    namespace = kubernetes_namespace_v1.zitadel.metadata[0].name
   }
 
   data = {
@@ -74,10 +76,10 @@ resource "kubernetes_secret" "zitadel_masterkey" {
 }
 
 # Zitadel database credentials secret
-resource "kubernetes_secret" "zitadel_db_credentials" {
+resource "kubernetes_secret_v1" "zitadel_db_credentials" {
   metadata {
     name      = "zitadel-db-credentials"
-    namespace = kubernetes_namespace.zitadel.metadata[0].name
+    namespace = kubernetes_namespace_v1.zitadel.metadata[0].name
   }
 
   data = {
@@ -99,10 +101,10 @@ resource "kubernetes_secret" "zitadel_db_credentials" {
 }
 
 # Zitadel cache credentials secret
-resource "kubernetes_secret" "zitadel_cache_credentials" {
+resource "kubernetes_secret_v1" "zitadel_cache_credentials" {
   metadata {
     name      = "zitadel-cache-credentials"
-    namespace = kubernetes_namespace.zitadel.metadata[0].name
+    namespace = kubernetes_namespace_v1.zitadel.metadata[0].name
   }
 
   data = {

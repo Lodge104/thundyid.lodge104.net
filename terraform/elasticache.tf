@@ -36,8 +36,8 @@ module "elasticache" {
   vpc_id = module.vpc.vpc_id
   security_group_rules = {
     ingress_eks = {
-      description                  = "Valkey from EKS nodes"
-      referenced_security_group_id = module.eks.node_security_group_id
+      description                  = "Valkey from EKS Auto Mode nodes (cluster primary SG)"
+      referenced_security_group_id = module.eks.cluster_primary_security_group_id
     }
   }
 

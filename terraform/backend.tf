@@ -4,7 +4,10 @@
 
 terraform {
   backend "s3" {
-    # These values are configured via CLI or environment variables
-    # See README.md for setup instructions
+    bucket         = "thundyid-terraform-state-423971488961"
+    dynamodb_table = "thundyid-terraform-locks"
+    encrypt        = true
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
   }
 }

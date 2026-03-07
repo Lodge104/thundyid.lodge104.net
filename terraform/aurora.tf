@@ -35,11 +35,11 @@ module "aurora" {
   vpc_id               = module.vpc.vpc_id
   db_subnet_group_name = module.vpc.database_subnet_group_name
 
-  # Security group — allow PostgreSQL from EKS nodes
+  # Security group — allow PostgreSQL from EKS Auto Mode nodes (which use the cluster primary SG)
   security_group_ingress_rules = {
-    eks_nodes = {
-      referenced_security_group_id = module.eks.node_security_group_id
-      description                  = "PostgreSQL from EKS nodes"
+    eks_cluster = {
+      referenced_security_group_id = module.eks.cluster_primary_security_group_id
+      description                  = "PostgreSQL from EKS Auto Mode nodes"
     }
   }
 
