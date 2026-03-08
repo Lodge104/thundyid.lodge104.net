@@ -215,7 +215,6 @@ resource "helm_release" "zitadel" {
           "alb.ingress.kubernetes.io/backend-protocol-version" = "HTTP2"
           "alb.ingress.kubernetes.io/healthcheck-path"         = "/debug/healthz"
           "alb.ingress.kubernetes.io/group.name"               = local.name
-          "external-dns.alpha.kubernetes.io/hostname"          = var.domain_name
         }
         hosts = [
           {
@@ -258,6 +257,22 @@ resource "helm_release" "zitadel" {
             tag        = "latest"
           }
         }
+      }
+
+      # Mark login-client secret volume as optional so login pods can start even if the
+      # PAT was not regenerated (e.g. on re-runs where machine user already exists in DB).
+      # The login app will operate in degraded mode until the secret is populated.
+      login = {
+        extraVolumes = [
+          {
+            name = "login-client"
+            secret = {
+              defaultMode = 444
+              secretName  = "login-client"
+              optional    = true
+            }
+          }
+        ]
       }
     })
   ]
