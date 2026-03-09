@@ -28,8 +28,10 @@ module "aurora" {
   database_name   = var.aurora_database_name
   master_username = var.aurora_master_username
 
-  # Let RDS manage the master password in Secrets Manager
-  manage_master_user_password = true
+  # Terraform-managed password (avoids data-source race condition on fresh clusters)
+  manage_master_user_password = false
+  master_password_wo          = random_password.aurora_master_password.result
+  master_password_wo_version  = 1
 
   # Networking
   vpc_id               = module.vpc.vpc_id

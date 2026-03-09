@@ -14,6 +14,14 @@ resource "random_password" "zitadel_db_app_password" {
   special = false
 }
 
+# Password for the Aurora master user (Terraform-managed, stable across apply cycles)
+resource "random_password" "aurora_master_password" {
+  length = 32
+  # Avoid characters that cause shell/YAML quoting issues
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+  special          = true
+}
+
 # Store masterkey in Secrets Manager for audit/recovery
 module "secrets_manager_masterkey" {
   source  = "terraform-aws-modules/secrets-manager/aws"
@@ -90,7 +98,7 @@ resource "kubernetes_secret_v1" "zitadel_db_credentials" {
             Password = random_password.zitadel_db_app_password.result
           }
           Admin = {
-            Password = data.aws_secretsmanager_secret_version.aurora_master.secret_string
+            Password = random_password.aurora_master_password.result
           }
         }
       }
@@ -123,18 +131,22 @@ resource "kubernetes_secret_v1" "zitadel_cache_credentials" {
 }
 
 # -----------------------------------------------------------------------------
-# Lookup Aurora master password from Secrets Manager (managed by RDS)
+# Store Aurora master password in Secrets Manager for audit/recovery
 # -----------------------------------------------------------------------------
 
-data "aws_secretsmanager_secret" "aurora_master" {
-  arn = module.aurora.cluster_master_user_secret[0].secret_arn
+module "secrets_manager_aurora_master" {
+  source  = "terraform-aws-modules/secrets-manager/aws"
+  version = "~> 1.0"
+
+  name                    = "${local.name}/aurora-master-password"
+  description             = "Aurora master password for ${local.name}-db"
+  recovery_window_in_days = 0
+
+  secret_string = random_password.aurora_master_password.result
+
+  tags = local.tags
 }
 
-data "aws_secretsmanager_secret_version" "aurora_master" {
-  secret_id = data.aws_secretsmanager_secret.aurora_master.id
-}
-
-# Extract the password from the JSON secret
 locals {
-  aurora_master_password = jsondecode(data.aws_secretsmanager_secret_version.aurora_master.secret_string)["password"]
+  aurora_master_password = random_password.aurora_master_password.result
 }

@@ -31,7 +31,7 @@ output "aurora_cluster_reader_endpoint" {
 
 output "aurora_master_secret_arn" {
   description = "ARN of the Secrets Manager secret containing the Aurora master password"
-  value       = module.aurora.cluster_master_user_secret[0].secret_arn
+  value       = module.secrets_manager_aurora_master.secret_arn
 }
 
 # ElastiCache / Valkey
