@@ -215,6 +215,7 @@ resource "helm_release" "zitadel" {
           "alb.ingress.kubernetes.io/backend-protocol-version" = "HTTP2"
           "alb.ingress.kubernetes.io/healthcheck-path"         = "/debug/healthz"
           "alb.ingress.kubernetes.io/group.name"               = local.name
+          "alb.ingress.kubernetes.io/group.order"              = "10"
         }
         hosts = [
           {
@@ -273,6 +274,42 @@ resource "helm_release" "zitadel" {
             }
           }
         ]
+
+        # Route /ui/v2/login/* to the login service (Next.js, HTTP/1).
+        # Uses the same ALB group as the main Zitadel ingress so both share a single ALB.
+        # group.order=1 ensures this more-specific path rule is assigned a lower ALB
+        # priority number than the catch-all / rule (group.order=10), so it is
+        # evaluated first and wins before the wildcard.
+        ingress = {
+          enabled   = true
+          className = "alb"
+          annotations = {
+            "alb.ingress.kubernetes.io/scheme"                   = "internet-facing"
+            "alb.ingress.kubernetes.io/target-type"              = "ip"
+            "alb.ingress.kubernetes.io/certificate-arn"          = module.acm.acm_certificate_arn
+            "alb.ingress.kubernetes.io/listen-ports"             = "[{\"HTTPS\":443}]"
+            "alb.ingress.kubernetes.io/backend-protocol-version" = "HTTP1"
+            "alb.ingress.kubernetes.io/healthcheck-path"         = "/healthz"
+            "alb.ingress.kubernetes.io/group.name"               = local.name
+            "alb.ingress.kubernetes.io/group.order"              = "1"
+          }
+          hosts = [
+            {
+              host = var.domain_name
+              paths = [
+                {
+                  path     = "/ui/v2/login"
+                  pathType = "Prefix"
+                }
+              ]
+            }
+          ]
+          tls = [
+            {
+              hosts = [var.domain_name]
+            }
+          ]
+        }
       }
     })
   ]
