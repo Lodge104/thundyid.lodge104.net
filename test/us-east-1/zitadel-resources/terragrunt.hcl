@@ -40,15 +40,9 @@ generate "zitadel_provider" {
   path      = "zitadel_provider.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
-    terraform {
-      required_providers {
-        zitadel = {
-          source  = "zitadel/zitadel"
-          version = "~> 3.0"
-        }
-      }
-    }
-
+    # required_providers is declared in _modules/zitadel-resources/versions.tf
+    # (copied alongside this generated file) -- declaring it again here would
+    # produce a "Duplicate required providers configuration" error.
     provider "zitadel" {
       domain       = "${local.app_domain}"
       port         = "443"
