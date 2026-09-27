@@ -402,5 +402,12 @@
     "chat.includeReferencedInstructions": true,
     "chat.experimental.useSkillAdherencePrompt": true,
     "chat.useNestedAgentsMdFiles": true,
-    "inlineChat.defaultModel": "Claude Haiku 4.5 (bedrock)"
+    "inlineChat.defaultModel": "Claude Haiku 4.5 (bedrock)",
+    "github.copilot.chat.agent.longToolCallCachePreservation.enabled": true,
+    "github.copilot.chat.agent.longToolCallCachePreservation.maxProbes": 5,
+    "github.copilot.chat.responsesApi.promptCacheKey.enabled": true,
+    "githubRepositories.indexing.cacheSizeLimit": 100,
+    "github.copilot.chat.anthropic.promptCaching.extendedTtl": true,
+    "github.copilot.chat.anthropic.promptCaching.extendedTtlMessages": true,
+    "github.copilot.chat.anthropic.contextEditing.mode": "clear-both"
 }
