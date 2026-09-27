@@ -112,3 +112,14 @@ variable "redis_password" {
   type        = string
   sensitive   = true
 }
+
+# ---------------------------------------------------------------------------
+# Bootstrap machine admin -- lets the zitadel-resources module (and its
+# Terraform provider) authenticate to this instance without a human login.
+# ---------------------------------------------------------------------------
+
+variable "machine_admin_username" {
+  description = "Username of the FirstInstance.Org.Machine bootstrap admin (configured via the Helm values, not by this module). When set, this module reads back the Personal Access Token the chart generates for that machine user, from the Kubernetes Secret named \"<username>-pat\", and exposes it via the admin_pat output. Leave null to skip (no machine admin configured)."
+  type        = string
+  default     = null
+}

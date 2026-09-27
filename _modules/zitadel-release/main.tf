@@ -105,3 +105,20 @@ data "kubernetes_ingress_v1" "this" {
 
   depends_on = [time_sleep.wait_for_ingress]
 }
+
+# Zitadel's Helm chart creates a Kubernetes Secret named "<username>-pat"
+# containing the Personal Access Token for the FirstInstance.Org.Machine
+# bootstrap admin (see the Machine/Pat block composed into configmapConfig
+# by the calling terragrunt.hcl). Reading it back here lets the
+# zitadel-resources module's Terraform provider authenticate as that
+# machine user without any human interaction.
+data "kubernetes_secret_v1" "admin_pat" {
+  count = var.machine_admin_username != null ? 1 : 0
+
+  metadata {
+    name      = "${var.machine_admin_username}-pat"
+    namespace = var.namespace
+  }
+
+  depends_on = [helm_release.this]
+}

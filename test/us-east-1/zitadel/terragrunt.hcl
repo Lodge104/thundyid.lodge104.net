@@ -142,6 +142,11 @@ inputs = {
   db_admin_password = dependency.zitadel_secrets.outputs.aurora_master_password
   redis_password    = dependency.zitadel_secrets.outputs.valkey_auth_token
 
+  # Read back the machine admin's PAT (see the Machine block in the Helm
+  # values below) so it can be exposed as this unit's admin_pat output, for
+  # the zitadel-resources unit's Terraform provider to consume.
+  machine_admin_username = local.common.locals.machine_admin_username
+
   expose_ingress_hostname = true
   ingress_name            = local.common.locals.release_name
 
@@ -205,6 +210,18 @@ inputs = {
                   Address: ${local.zitadel_config.admin_email}
                   Verified: true
                 PasswordChangeRequired: true
+              # Non-interactive machine admin, created alongside the human
+              # admin above. The chart writes its PAT to a Kubernetes
+              # Secret named "<Username>-pat", which zitadel-release reads
+              # back (machine_admin_username input) so the zitadel-resources
+              # unit's Terraform provider can authenticate without a human
+              # login. See _common/zitadel.hcl.
+              Machine:
+                Machine:
+                  Username: ${local.common.locals.machine_admin_username}
+                  Name: Terraform Admin
+                Pat:
+                  ExpirationDate: "2100-01-01T00:00:00Z"
 
           Machine:
             Identification:

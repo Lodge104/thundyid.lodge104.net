@@ -7,6 +7,15 @@ locals {
   release_name  = "zitadel"
   namespace     = "zitadel"
 
+  # FirstInstance.Org.Machine bootstrap admin -- created alongside the human
+  # admin (see FirstInstance.Org.Human in each env's zitadel/terragrunt.hcl)
+  # so the zitadel-resources module's Terraform provider has a
+  # non-interactive Personal Access Token to authenticate with, instead of
+  # requiring a human login. The chart writes the PAT to a Kubernetes Secret
+  # named "<machine_admin_username>-pat", which zitadel-release reads back
+  # via its machine_admin_username input.
+  machine_admin_username = "zitadel-terraform-admin"
+
   # ---------------------------------------------------------------------------
   # Base Helm values applied to all environments.
   # TLS is terminated at the ALB, so the pod-internal listener stays plain
