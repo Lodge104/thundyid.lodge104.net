@@ -2,6 +2,27 @@
   "image": "mcr.microsoft.com/devcontainers/universal:linux",
   "features": {
     "ghcr.io/devcontainers/features/aws-cli:1": {},
-    "ghcr.io/devcontainers/features/terraform:1": {}
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "installTerraformDocs": true
+    },
+    "ghcr.io/devcontainers-extra/features/packer-asdf:2": {},
+    "ghcr.io/flexwie/devcontainer-features/op:1": {},
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {},
+    "ghcr.io/devcontainers/features/node:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "christian-kohler.path-intellisense",
+        "Gruntwork.terragrunt-ls",
+        "esbenp.prettier-vscode",
+        "arifum.bedrock-vscode-chat",
+        "amazonwebservices.aws-toolkit-vscode",
+        "4ops.terraform",
+        "hashicorp.terraform"
+      ]
+    }
   }
 }
