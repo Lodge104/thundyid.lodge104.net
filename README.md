@@ -7,9 +7,13 @@ module conventions mirror
 the same `_common/*.hcl` + `_modules/*` + per-environment `terragrunt.hcl`
 pattern is reused so both projects stay consistent and easy to cross-reference.
 
-Unlike WordPress (which has `dev`/`test`/`prod` environments), Zitadel is a
-single shared identity service for the org, so only a `prod` environment
-tree exists.
+Like WordPress, this project has `dev`/`test`/`prod` environment trees.
+All three are exact replicas of each other — identical sizing/architecture —
+and differ only in environment name and the resulting domain: `prod` serves
+`thundyid.lodge104.net` directly, while `dev` and `test` are reachable at
+`dev.thundyid.lodge104.net` and `test.thundyid.lodge104.net` (each with its
+own delegated Route53 zone, ACM certificate, and ALB), since a domain/cert/
+ALB cannot be shared across separate environments.
 
 ## Architecture
 
@@ -35,11 +39,16 @@ tree exists.
   `thundyid.lodge104.net`.
 - **Route53**:
   - `global/route53-thundyid` creates the delegated `thundyid.lodge104.net`
-    hosted zone (analogous to wp.lodge104.net's `route53-dev`/`-test`/`-prod`).
+    hosted zone; `global/route53-dev` and `global/route53-test` create the
+    per-env `dev.thundyid.lodge104.net` / `test.thundyid.lodge104.net` zones
+    (analogous to wp.lodge104.net's `route53-dev`/`-test`/`-prod`).
   - `global/route53-parent` delegates the `thundyid` subdomain (NS + DS
     records) from the shared `lodge104.net` root zone.
-  - `prod/us-east-1/route53` creates the ALB alias `A` record once Zitadel's
-    Ingress load balancer exists.
+  - `global/route53-env-delegation` delegates the `dev` and `test`
+    subdomains (NS + DS records) from the `thundyid.lodge104.net` zone down
+    to their own per-env zones.
+  - Each env's `<env>/us-east-1/route53` unit creates the ALB alias `A`
+    record once that env's Zitadel Ingress load balancer exists.
 - **zitadel-secrets** (`_modules/zitadel-secrets`) — generates and stores in
   AWS Secrets Manager all credentials the deployment needs up front: the
   32-byte encryption masterkey, the Aurora master password, the Zitadel
@@ -68,10 +77,15 @@ _modules/
   valkey-release/                 # in-cluster Valkey helm_release + auth Secret bridge
 global/
   region.hcl
-  route53-thundyid/              # delegated hosted zone
+  route53-thundyid/              # delegated hosted zone for prod
+  route53-dev/                    # delegated hosted zone for dev
+  route53-test/                   # delegated hosted zone for test
   route53-parent/                 # NS/DS delegation from lodge104.net
+  route53-env-delegation/          # NS/DS delegation of dev/test from thundyid.lodge104.net
+dev/                            # exact replica of prod, see below
+test/                           # exact replica of prod, see below
 prod/
-  env.hcl                        # env-specific sizing/config
+  env.hcl                        # env-specific sizing/config (identical across dev/test/prod)
   us-east-1/
     region.hcl
     vpc/ eks/ eks-addons/
@@ -84,13 +98,16 @@ prod/
 ## Deploying
 
 ```sh
-cd prod/us-east-1
+cd prod/us-east-1   # or dev/us-east-1, test/us-east-1
 terragrunt run-all init
 terragrunt run-all apply
 ```
 
 Terragrunt's `dependency` blocks enforce ordering automatically (vpc → eks →
 eks-addons/rds/zitadel-secrets → valkey → acm → zitadel → route53).
+
+Each environment's remote state is stored under its own `<env>/us-east-1/...`
+key in the shared state bucket, so `dev`, `test`, and `prod` never collide.
 
 After apply, retrieve the initial admin credentials:
 

@@ -1,5 +1,5 @@
 locals {
-  env = "prod"
+  env = "dev"
 
   # Environment-specific network and workload sizing. dev/test/prod are
   # exact replicas of each other (same sizing/architecture); only the env
