@@ -57,11 +57,19 @@
         "*"
       ],
       "env": {
-        "DEBUG": "auth0-mcp"
+        "DEBUG": "auth0-mcp",
+        "AUTH0_TOKEN": "${input:auth0token}",
+        "AUTH0_DOMAIN": "lodge104.auth0.com"
       }
     }
   },
   "inputs": [
+    {
+      "id": "auth0token",
+      "type": "promptString",
+      "description": "",
+      "password": true
+    },
     {
       "id": "token",
       "type": "promptString",
