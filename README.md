@@ -69,7 +69,7 @@ ALB cannot be shared across separate environments.
 
 ```
 project.hcl                    # project-wide constants (names, domain)
-terragrunt.hcl                 # root: remote state + provider generation
+root.hcl                        # root Terragrunt config: remote state + provider generation
 _common/*.hcl                  # shared config per resource type, env-agnostic
 _modules/
   zitadel-release/              # helm_release + masterkey Secret bridge

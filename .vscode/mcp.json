@@ -1,73 +1,86 @@
 {
-	"servers": {
-		"io.github.github/github-mcp-server": {
-			"type": "stdio",
-			"command": "docker",
-			"args": [
-				"run",
-				"-i",
-				"--rm",
-				"-p",
-				"127.0.0.1:8085:8085",
-				"-e",
-				"GITHUB_OAUTH_CALLBACK_PORT=8085",
-				"-e",
-				"GITHUB_PERSONAL_ACCESS_TOKEN=${input:token}",
-				"ghcr.io/github/github-mcp-server:1.12.2"
-			],
-			"gallery": "https://api.mcp.github.com",
-			"version": "1.12.2"
-		},
-		"io.github.hashicorp/terraform-mcp-server": {
-			"type": "stdio",
-			"command": "docker",
-			"args": [
-				"run",
-				"-i",
-				"--rm",
-				"-e",
-				"TFE_ADDRESS=${input:address}",
-				"-e",
-				"TFE_TOKEN=${input:token}",
-				"-e",
-				"ENABLE_TF_OPERATIONS=${input:enabled}",
-				"docker.io/hashicorp/terraform-mcp-server:1.0.0"
-			],
-			"gallery": "https://api.mcp.github.com",
-			"version": "1.0.0"
-		},
-		"aws-mcp": {
-			"command": "uvx",
-			"timeout": 100000,
-			"transport": "stdio",
-			"args": [
-				"mcp-proxy-for-aws@1.6.3",
-				"https://aws-mcp.us-east-1.api.aws/mcp",
-				"--metadata",
-				"AWS_REGION=us-west-2"
-			]
-		}
-	},
-	"inputs": [
-		{
-			"id": "token",
-			"type": "promptString",
-			"description": "",
-			"password": true
-		},
-		{
-			"id": "address",
-			"type": "promptString",
-			"description": "",
-			"password": false,
-			"default": "https://app.terraform.io"
-		},
-		{
-			"id": "enabled",
-			"type": "promptString",
-			"description": "",
-			"password": false,
-			"default": "false"
-		}
-	]
+  "servers": {
+    "io.github.github/github-mcp-server": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-p",
+        "127.0.0.1:8085:8085",
+        "-e",
+        "GITHUB_OAUTH_CALLBACK_PORT=8085",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=${input:token}",
+        "ghcr.io/github/github-mcp-server:1.12.2"
+      ],
+      "gallery": "https://api.mcp.github.com",
+      "version": "1.12.2"
+    },
+    "io.github.hashicorp/terraform-mcp-server": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "TFE_ADDRESS=${input:address}",
+        "-e",
+        "TFE_TOKEN=${input:token}",
+        "-e",
+        "ENABLE_TF_OPERATIONS=${input:enabled}",
+        "docker.io/hashicorp/terraform-mcp-server:1.0.0"
+      ],
+      "gallery": "https://api.mcp.github.com",
+      "version": "1.0.0"
+    },
+    "aws-mcp": {
+      "command": "uvx",
+      "timeout": 100000,
+      "transport": "stdio",
+      "args": [
+        "mcp-proxy-for-aws@1.6.3",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata",
+        "AWS_REGION=us-west-2"
+      ]
+    },
+    "auth0": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@auth0/auth0-mcp-server",
+        "run",
+        "--tools",
+        "*"
+      ],
+      "env": {
+        "DEBUG": "auth0-mcp"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "token",
+      "type": "promptString",
+      "description": "",
+      "password": true
+    },
+    {
+      "id": "address",
+      "type": "promptString",
+      "description": "",
+      "password": false,
+      "default": "https://app.terraform.io"
+    },
+    {
+      "id": "enabled",
+      "type": "promptString",
+      "description": "",
+      "password": false,
+      "default": "false"
+    }
+  ]
 }
