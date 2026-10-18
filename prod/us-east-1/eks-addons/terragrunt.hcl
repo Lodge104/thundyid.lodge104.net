@@ -80,6 +80,54 @@ generate "helm_provider" {
   EOF
 }
 
+# Custom Karpenter NodePool for AWS Graviton (arm64) instances.
+#
+# EKS Auto Mode's built-in "general-purpose" NodePool is fixed to AMD64 and
+# is disabled in _common/eks.hcl, so this untainted custom pool is what
+# every ordinary workload pod -- Zitadel, Valkey, and this unit's own
+# aws-load-balancer-controller/external-dns -- actually schedules onto.
+# All of those images publish multi-arch (amd64+arm64) manifests, so no
+# pod-level nodeSelector/toleration is required for them to land here.
+# Pattern: https://aws.amazon.com/blogs/containers/maximize-amazon-eks-efficiency-how-auto-mode-graviton-and-spot-work-together/
+generate "graviton_node_pool" {
+  path      = "graviton_node_pool.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+    resource "kubernetes_manifest" "graviton_node_pool" {
+      manifest = {
+        apiVersion = "karpenter.sh/v1"
+        kind       = "NodePool"
+        metadata = {
+          name = "graviton"
+        }
+        spec = {
+          template = {
+            spec = {
+              nodeClassRef = {
+                group = "eks.amazonaws.com"
+                kind  = "NodeClass"
+                name  = "default"
+              }
+              requirements = [
+                { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
+                { key = "eks.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] },
+                { key = "eks.amazonaws.com/instance-generation", operator = "Gt", values = ["6"] },
+                { key = "kubernetes.io/arch", operator = "In", values = ["arm64"] },
+              ]
+            }
+          }
+          disruption = {
+            consolidationPolicy = "WhenEmptyOrUnderutilized"
+            budgets = [
+              { nodes = "10%" }
+            ]
+          }
+        }
+      }
+    }
+  EOF
+}
+
 inputs = merge(
   local.common.locals,
   {

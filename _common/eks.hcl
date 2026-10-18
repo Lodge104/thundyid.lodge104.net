@@ -21,8 +21,18 @@ locals {
 
   # EKS Auto Mode -- AWS manages compute via node pools instead of
   # eks_managed_node_groups.
+  #
+  # Cost optimization: the built-in "general-purpose" NodePool is fixed to
+  # AMD64 instances only (AWS does not let you edit it, only enable or
+  # disable it -- see https://docs.aws.amazon.com/eks/latest/best-practices/automode.html).
+  # To actually reach Graviton's lower per-vCPU/GiB pricing, it is disabled
+  # here in favor of a custom arm64-only "graviton" NodePool (generated in
+  # eks-addons/terragrunt.hcl), per AWS's documented pattern:
+  # https://aws.amazon.com/blogs/containers/maximize-amazon-eks-efficiency-how-auto-mode-graviton-and-spot-work-together/
+  # "system" stays enabled -- it runs cluster-critical add-ons (CoreDNS,
+  # etc.) and tolerates both architectures.
   compute_config = {
     enabled    = true
-    node_pools = ["general-purpose"]
+    node_pools = ["system"]
   }
 }

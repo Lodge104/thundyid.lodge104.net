@@ -1,7 +1,17 @@
 # Common VPC defaults – override in each env's terragrunt.hcl as needed.
 locals {
-  enable_nat_gateway   = true
-  single_nat_gateway   = true
+  # NAT Gateway removed entirely -- cost optimization mirroring
+  # wp.lodge104.net's issue #32 pattern. EKS worker nodes now run in the
+  # public subnets (see _common/eks.hcl / eks/terragrunt.hcl) with
+  # security-group-scoped inbound access instead of routing egress through
+  # a NAT Gateway. The database subnets (RDS) stay fully private and never
+  # needed NAT in the first place.
+  enable_nat_gateway = false
+
+  # Required so instances placed in the public subnets (EKS nodes) get a
+  # public IP at launch without a NAT Gateway providing egress.
+  map_public_ip_on_launch = true
+
   enable_dns_hostnames = true
   enable_dns_support   = true
 
