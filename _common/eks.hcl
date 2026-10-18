@@ -11,6 +11,15 @@
 locals {
   kubernetes_version = "1.37"
 
+  # Stay on the standard-support upgrade train and let AWS auto-upgrade the
+  # control plane at the end of standard support, instead of paying for
+  # Extended Support ($0.60/cluster-hr vs. $0.10/cluster-hr -- roughly
+  # $365/mo extra per cluster). The module/API default is EXTENDED.
+  # https://aws.amazon.com/blogs/containers/amazon-eks-extended-support-for-kubernetes-versions-pricing/
+  upgrade_policy = {
+    support_type = "STANDARD"
+  }
+
   endpoint_public_access  = true
   endpoint_private_access = true
 
@@ -18,6 +27,13 @@ locals {
 
   # IRSA (IAM Roles for Service Accounts)
   enable_irsa = true
+
+  # Control plane log group (api/audit/authenticator) -- bound retention
+  # cost instead of the module's 90-day default, and use the cheaper
+  # Infrequent Access log class since these are for incident investigation,
+  # not routine querying.
+  cloudwatch_log_group_retention_in_days = 14
+  cloudwatch_log_group_class             = "INFREQUENT_ACCESS"
 
   # EKS Auto Mode -- AWS manages compute via node pools instead of
   # eks_managed_node_groups.

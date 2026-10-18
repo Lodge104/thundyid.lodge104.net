@@ -18,11 +18,27 @@ ALB cannot be shared across separate environments.
 ## Architecture
 
 - **VPC** (`terraform-aws-modules/vpc/aws`) — dedicated VPC, public/private/
-  database subnets, NAT gateway, flow logs.
+  database subnets, flow logs. **No NAT Gateway** (cost optimization,
+  mirroring wp.lodge104.net) — EKS worker nodes run in the public subnets
+  with security-group-scoped inbound access and a public IP
+  (`map_public_ip_on_launch`) instead of routing egress through a NAT
+  Gateway; the EKS control plane ENIs stay on the private subnets and RDS
+  stays on the dedicated database subnets, neither of which ever needed a
+  NAT route.
 - **EKS** (`terraform-aws-modules/eks/aws`, **Auto Mode**) — AWS manages
-  node pools (`general-purpose`) directly; no `eks_managed_node_groups`.
+  compute via node pools instead of `eks_managed_node_groups`. Only the
+  built-in `system` node pool is enabled (cluster-critical add-ons like
+  CoreDNS). The built-in `general-purpose` pool is disabled because AWS
+  fixes it to AMD64-only instances — `eks-addons` (below) generates a
+  custom `graviton` Karpenter `NodePool` (arm64-only) instead, so Zitadel,
+  Valkey, and the add-ons all schedule onto cheaper Graviton instances
+  (every image involved publishes multi-arch amd64+arm64 manifests, so no
+  pod-level changes were needed). Pattern:
+  https://aws.amazon.com/blogs/containers/maximize-amazon-eks-efficiency-how-auto-mode-graviton-and-spot-work-together/
 - **eks-addons** (`aws-ia/eks-blueprints-addons`) — AWS Load Balancer
-  Controller (for the shared ALB Ingress pattern) and external-dns.
+  Controller (for the shared ALB Ingress pattern), external-dns, and a
+  generated `kubernetes_manifest` resource for the custom Graviton
+  `NodePool` described above.
 - **RDS** (`terraform-aws-modules/rds-aurora/aws`) — Aurora PostgreSQL
   Serverless v2, satisfies Zitadel's Postgres 14+ requirement. Master
   password is Terraform-managed (`zitadel-secrets`), not
@@ -64,6 +80,23 @@ ALB cannot be shared across separate environments.
   TLS terminates at the ALB (`TLS.Enabled: false`); a second ALB Ingress
   group member routes `/ui/v2/login` to the Next.js login service on the
   same shared ALB (see [Zitadel's Kubernetes deployment docs](https://zitadel.com/docs/self-hosting/deploy/kubernetes)).
+  The chart's `FirstInstance.Org.Machine` config also bootstraps a
+  `zitadel-terraform-admin` machine user + Personal Access Token, which
+  `zitadel-release` reads back from the Kubernetes Secret the chart
+  creates (`<username>-pat`) and exposes as the `admin_pat` output, so
+  `zitadel-resources` (below) can authenticate non-interactively.
+- **zitadel-apps.hcl / zitadel-resources** (`_modules/zitadel-resources`,
+  the [ZITADEL Terraform provider](https://registry.terraform.io/providers/zitadel/zitadel/latest))
+  — migrates every application from the Lodge104 Auth0 tenant
+  (`lodge104.auth0.com`) into ZITADEL: creates the `Occoneechee Lodge`
+  organization, an `Auth0 Migration` project, and each OIDC web/public app
+  and API (M2M) application. `_common/zitadel-apps.hcl` is the catalog,
+  built by enumerating the Auth0 tenant via its Management API and
+  classifying each app's `app_type`/`token_endpoint_auth_method` into the
+  closest ZITADEL application type (SAML apps are deferred pending
+  per-Service-Provider metadata). Authenticates against the ZITADEL API
+  using the machine admin's PAT (see `zitadel` above) — no human login
+  required.
 
 ## Directory structure
 
@@ -71,9 +104,11 @@ ALB cannot be shared across separate environments.
 project.hcl                    # project-wide constants (names, domain)
 root.hcl                        # root Terragrunt config: remote state + provider generation
 _common/*.hcl                  # shared config per resource type, env-agnostic
+  zitadel-apps.hcl               # catalog of apps migrated from Auth0 (org/project/apps)
 _modules/
-  zitadel-release/              # helm_release + masterkey Secret bridge
+  zitadel-release/              # helm_release + masterkey/machine-PAT Secret bridge
   zitadel-secrets/               # random_password + Secrets Manager
+  zitadel-resources/              # ZITADEL org/project/application resources (Auth0 migration)
   valkey-release/                 # in-cluster Valkey helm_release + auth Secret bridge
 global/
   region.hcl
@@ -93,26 +128,50 @@ prod/
     zitadel-secrets/
     acm/ route53/
     zitadel/
+    zitadel-resources/            # Auth0-migrated org/project/applications
 ```
 
 ## Deploying
 
 ```sh
 cd prod/us-east-1   # or dev/us-east-1, test/us-east-1
-terragrunt run-all init
-terragrunt run-all apply
+terragrunt run --all init
+terragrunt run --all apply
 ```
 
 Terragrunt's `dependency` blocks enforce ordering automatically (vpc → eks →
-eks-addons/rds/zitadel-secrets → valkey → acm → zitadel → route53).
+eks-addons/rds/zitadel-secrets → valkey → acm → zitadel → zitadel-resources →
+route53).
+
+### First-time bootstrap of a brand-new environment
+
+`eks-addons`, `valkey`, `zitadel`, and `zitadel-resources` all generate
+Helm/Kubernetes/ZITADEL provider configuration that reads from a *live*
+resource — a `data "aws_eks_cluster"` lookup for the EKS cluster, or (for
+`zitadel-resources`) the running ZITADEL API. `dependency` blocks and
+`mock_outputs` only satisfy Terragrunt's own cross-unit output resolution;
+they don't stand in for these raw `data` source reads. On a completely
+fresh environment, run `vpc` and `eks` by themselves first so the cluster
+actually exists before anything else tries to read it:
+
+```sh
+cd prod/us-east-1/vpc && terragrunt apply && cd ../eks && terragrunt apply && cd ..
+terragrunt run --all apply
+```
+
+On every subsequent run (steady state), a plain `terragrunt run --all apply`
+from the env root is sufficient.
 
 Each environment's remote state is stored under its own `<env>/us-east-1/...`
 key in the shared state bucket, so `dev`, `test`, and `prod` never collide.
 
-After apply, retrieve the initial admin credentials:
+After apply, retrieve the initial admin credentials (along with the rest of
+the generated secrets -- masterkey, app DB role, Valkey AUTH token, and
+Aurora master password -- all live in one consolidated secret, see
+`_modules/zitadel-secrets`):
 
 ```sh
 aws secretsmanager get-secret-value \
-  --secret-id net-lodge104-zitadel-prod/zitadel-admin-credentials \
-  --query SecretString --output text | jq .
+  --secret-id net-lodge104-zitadel-prod/zitadel \
+  --query SecretString --output text | jq '{username: .admin_username, password: .admin_password}'
 ```

@@ -4,11 +4,6 @@ output "masterkey" {
   sensitive   = true
 }
 
-output "masterkey_secret_arn" {
-  description = "ARN of the AWS Secrets Manager secret holding the Zitadel masterkey."
-  value       = aws_secretsmanager_secret.masterkey.arn
-}
-
 output "db_app_username" {
   description = "Username of the Zitadel application database role."
   value       = var.db_app_username
@@ -20,20 +15,10 @@ output "db_app_password" {
   sensitive   = true
 }
 
-output "db_app_password_secret_arn" {
-  description = "ARN of the AWS Secrets Manager secret holding the Zitadel application database role's credentials."
-  value       = aws_secretsmanager_secret.db_app_password.arn
-}
-
 output "valkey_auth_token" {
   description = "In-cluster Valkey AUTH token."
   value       = random_password.valkey_auth_token.result
   sensitive   = true
-}
-
-output "valkey_auth_token_secret_arn" {
-  description = "ARN of the AWS Secrets Manager secret holding the in-cluster Valkey AUTH token."
-  value       = aws_secretsmanager_secret.valkey_auth_token.arn
 }
 
 output "aurora_master_password" {
@@ -42,18 +27,13 @@ output "aurora_master_password" {
   sensitive   = true
 }
 
-output "aurora_master_password_secret_arn" {
-  description = "ARN of the AWS Secrets Manager secret holding the Aurora master password."
-  value       = aws_secretsmanager_secret.aurora_master_password.arn
-}
-
 output "admin_password" {
   description = "Initial Zitadel FirstInstance bootstrap admin password."
   value       = random_password.admin_password.result
   sensitive   = true
 }
 
-output "admin_credentials_secret_arn" {
-  description = "ARN of the AWS Secrets Manager secret holding the initial Zitadel admin username and password."
-  value       = aws_secretsmanager_secret.admin_credentials.arn
+output "secret_arn" {
+  description = "ARN of the single consolidated AWS Secrets Manager secret holding all Zitadel credentials (masterkey, app DB role, Valkey AUTH token, Aurora master password, initial admin credentials)."
+  value       = aws_secretsmanager_secret.zitadel.arn
 }

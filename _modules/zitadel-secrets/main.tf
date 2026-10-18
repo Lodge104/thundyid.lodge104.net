@@ -45,53 +45,6 @@ resource "random_password" "aurora_master_password" {
   override_special = "!#$%&*()-_=+[]{}<>?"
 }
 
-resource "aws_secretsmanager_secret" "masterkey" {
-  name                    = "${var.name_prefix}/zitadel-masterkey"
-  description             = "Zitadel encryption masterkey."
-  recovery_window_in_days = var.recovery_window_in_days
-}
-
-resource "aws_secretsmanager_secret_version" "masterkey" {
-  secret_id     = aws_secretsmanager_secret.masterkey.id
-  secret_string = random_password.masterkey.result
-}
-
-resource "aws_secretsmanager_secret" "db_app_password" {
-  name                    = "${var.name_prefix}/zitadel-db-app-password"
-  description             = "Password for the '${var.db_app_username}' Zitadel application database role."
-  recovery_window_in_days = var.recovery_window_in_days
-}
-
-resource "aws_secretsmanager_secret_version" "db_app_password" {
-  secret_id = aws_secretsmanager_secret.db_app_password.id
-  secret_string = jsonencode({
-    username = var.db_app_username
-    password = random_password.db_app_password.result
-  })
-}
-
-resource "aws_secretsmanager_secret" "valkey_auth_token" {
-  name                    = "${var.name_prefix}/valkey-auth-token"
-  description             = "In-cluster Valkey AUTH token for Zitadel caching."
-  recovery_window_in_days = var.recovery_window_in_days
-}
-
-resource "aws_secretsmanager_secret_version" "valkey_auth_token" {
-  secret_id     = aws_secretsmanager_secret.valkey_auth_token.id
-  secret_string = random_password.valkey_auth_token.result
-}
-
-resource "aws_secretsmanager_secret" "aurora_master_password" {
-  name                    = "${var.name_prefix}/aurora-master-password"
-  description             = "Aurora PostgreSQL master (admin) password for ${var.name_prefix}."
-  recovery_window_in_days = var.recovery_window_in_days
-}
-
-resource "aws_secretsmanager_secret_version" "aurora_master_password" {
-  secret_id     = aws_secretsmanager_secret.aurora_master_password.id
-  secret_string = random_password.aurora_master_password.result
-}
-
 # Initial FirstInstance bootstrap admin password. Generated here (instead of
 # hardcoded in env.hcl) so no plaintext credential ever needs to be
 # committed -- retrieve the generated value from Secrets Manager after
@@ -104,16 +57,27 @@ resource "random_password" "admin_password" {
   override_special = "!#$%&*()-_=+[]{}<>?"
 }
 
-resource "aws_secretsmanager_secret" "admin_credentials" {
-  name                    = "${var.name_prefix}/zitadel-admin-credentials"
-  description             = "Initial Zitadel FirstInstance bootstrap admin credentials."
+# Single consolidated secret -- cost optimization: 5 separate
+# AWS Secrets Manager secrets (10,000 secrets free tier aside, each is
+# ~$0.40/mo) all have the same lifetime and the same consumers (the rds,
+# valkey, and zitadel-release terragrunt units), so there's no isolation
+# benefit to splitting them. One JSON secret with all values as top-level
+# keys replaces the five.
+resource "aws_secretsmanager_secret" "zitadel" {
+  name                    = "${var.name_prefix}/zitadel"
+  description             = "Zitadel credentials: encryption masterkey, app DB role, in-cluster Valkey AUTH token, Aurora master password, and initial bootstrap admin credentials."
   recovery_window_in_days = var.recovery_window_in_days
 }
 
-resource "aws_secretsmanager_secret_version" "admin_credentials" {
-  secret_id = aws_secretsmanager_secret.admin_credentials.id
+resource "aws_secretsmanager_secret_version" "zitadel" {
+  secret_id = aws_secretsmanager_secret.zitadel.id
   secret_string = jsonencode({
-    username = var.admin_username
-    password = random_password.admin_password.result
+    masterkey              = random_password.masterkey.result
+    db_app_username        = var.db_app_username
+    db_app_password        = random_password.db_app_password.result
+    valkey_auth_token      = random_password.valkey_auth_token.result
+    aurora_master_password = random_password.aurora_master_password.result
+    admin_username         = var.admin_username
+    admin_password         = random_password.admin_password.result
   })
 }

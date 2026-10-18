@@ -27,6 +27,12 @@ locals {
 
   enabled_cloudwatch_logs_exports = ["postgresql"]
 
+  # Module default (create_cloudwatch_log_group = false) leaves RDS to
+  # auto-create the "postgresql" log group with no expiration, so cost
+  # grows unbounded. Create it ourselves with a bounded retention instead.
+  create_cloudwatch_log_group            = true
+  cloudwatch_log_group_retention_in_days = 14
+
   # Enhanced monitoring disabled -- its per-instance CloudWatch cost wasn't
   # justified by active use. Performance Insights (free tier: 7-day
   # retention) remains enabled for query-level diagnostics.

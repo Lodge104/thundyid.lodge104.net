@@ -22,6 +22,10 @@ locals {
   # Bound the flow log CloudWatch Logs group's storage cost -- default
   # (module) behavior retains logs indefinitely.
   flow_log_cloudwatch_log_group_retention_in_days = 14
+  # Infrequent Access log class -- these logs are for incident
+  # investigation, not routine querying, so the cheaper ingestion/storage
+  # tier is a direct cost cut with no feature loss.
+  flow_log_cloudwatch_log_group_class = "INFREQUENT_ACCESS"
 
   # Subnet tags required for EKS auto-discovery
   public_subnet_tags = {

@@ -109,9 +109,17 @@ generate "graviton_node_pool" {
                 name  = "default"
               }
               requirements = [
-                { key = "karpenter.sh/capacity-type", operator = "In", values = ["on-demand"] },
-                { key = "eks.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] },
-                { key = "eks.amazonaws.com/instance-generation", operator = "Gt", values = ["6"] },
+                # Spot first, falling back to On-Demand when no Spot
+                # capacity is available. Zitadel/login run >=2 replicas
+                # behind a PDB with hostname topology spread (see
+                # _common/zitadel.hcl), so a Spot interruption of one node
+                # never takes the service down.
+                { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
+                # Explicit family list (rather than category + generation
+                # filters) so burstable t4g -- about half the cost of a
+                # c7g/m7g.large On-Demand -- is in the selectable pool
+                # alongside the compute/general/memory-optimized families.
+                { key = "eks.amazonaws.com/instance-family", operator = "In", values = ["c7g", "m7g", "r7g", "c8g", "m8g", "r8g", "t4g"] },
                 { key = "kubernetes.io/arch", operator = "In", values = ["arm64"] },
               ]
             }

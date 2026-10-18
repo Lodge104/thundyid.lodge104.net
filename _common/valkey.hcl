@@ -41,7 +41,11 @@ locals {
       persistence:
         enabled: true
         size: 2Gi
-      resourcesPreset: small
+      # "micro" (250m/256Mi request) is still comfortably above what a
+      # single-instance cache fronting Zitadel's session/instance/org
+      # caches needs -- "small" (500m/512Mi) was over-provisioned for this
+      # workload.
+      resourcesPreset: micro
 
     networkPolicy:
       enabled: true

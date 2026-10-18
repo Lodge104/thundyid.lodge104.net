@@ -27,6 +27,22 @@ locals {
       enabled: true
       minAvailable: 1
 
+    # Spread replicas across nodes (one per node) so a single Spot
+    # interruption or node drain (see the Graviton NodePool's
+    # capacity-type in eks-addons/terragrunt.hcl) never takes down more
+    # than one replica at a time. DoNotSchedule is safe with Karpenter --
+    # it provisions an additional node rather than leaving the pod
+    # pending.
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: zitadel
+            app.kubernetes.io/instance: zitadel
+            app.kubernetes.io/component: start
+
     # Increase job deadlines -- default 300s is not enough for a fresh setup
     # against Aurora Serverless v2 while it's scaling up from 0.
     initJob:
@@ -57,5 +73,15 @@ locals {
             defaultMode: 292
             secretName: login-client
             optional: true
+      # Same spread rationale as the main zitadel deployment above.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel-login
+              app.kubernetes.io/instance: zitadel
+              app.kubernetes.io/component: login
   YAML
 }
