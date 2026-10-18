@@ -39,7 +39,7 @@ locals {
       # `zitadel start` runs.
       additionalArgs: []
       # bitnami/kubectl only publishes a "latest" tag; the chart default
-      # computes a tag like "1.33" from the K8s version, which does not
+      # computes a tag like "1.37" from the K8s version, which does not
       # exist in the registry.
       machinekeyWriter:
         image:

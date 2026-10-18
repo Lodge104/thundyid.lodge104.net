@@ -9,7 +9,7 @@
 # integration expects it (Auto Mode does not itself run an Ingress
 # controller for shared ALBs like this project uses).
 locals {
-  kubernetes_version = "1.33"
+  kubernetes_version = "1.37"
 
   endpoint_public_access  = true
   endpoint_private_access = true

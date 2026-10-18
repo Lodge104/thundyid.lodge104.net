@@ -25,7 +25,7 @@ dependency "eks" {
   mock_outputs = {
     cluster_name      = "${local.project}-${local.env}"
     cluster_endpoint  = "https://example.eks.amazonaws.com"
-    cluster_version   = "1.33"
+    cluster_version   = "1.37"
     oidc_provider_arn = "arn:aws:iam::000000000000:oidc-provider/oidc.eks.${local.region}.amazonaws.com/id/00000000000000000000000000000000"
   }
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "destroy"]
